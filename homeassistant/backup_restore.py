@@ -185,6 +185,7 @@ def restore_backup(config_dir_path: str) -> bool:
     """Restore the backup file if any.
 
     Returns True if a restore backup file was found and restored, False otherwise.
+    Test comment for commit purpose
     """
     config_dir = Path(config_dir_path)
     if not (restore_content := restore_backup_file_content(config_dir)):
