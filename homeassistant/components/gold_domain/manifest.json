@@ -1,0 +1,14 @@
+{
+  "domain": "gold_domain",
+  "name": "gold_maker",
+  "codeowners": ["@cyanlink"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://www.home-assistant.io/integrations/gold_domain",
+  "homekit": {},
+  "iot_class": "assumed_state",
+  "quality_scale": "bronze",
+  "requirements": [],
+  "ssdp": [],
+  "zeroconf": []
+}
