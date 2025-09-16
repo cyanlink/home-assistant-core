@@ -1,6 +1,6 @@
 {
   "domain": "gold_domain",
-  "name": "gold_maker",
+  "name": "gold_maker!!",
   "codeowners": ["@cyanlink"],
   "config_flow": true,
   "dependencies": [],
