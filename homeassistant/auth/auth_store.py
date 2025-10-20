@@ -366,7 +366,9 @@ class AuthStore:
         self._group_without_policy = group_without_policy
         # This is part of migrating from state 1 and 2
 
-        for factory in (_system_admin_group, _system_user_group, _system_read_only_group):
+        for factory in (_system_admin_group, 
+                        _system_user_group, 
+                        _system_read_only_group):
             g = factory()
             groups.setdefault(g.id, g)
         return groups
@@ -412,6 +414,39 @@ class AuthStore:
             credentials[cred_dict["id"]] = credential
             users[cred_dict["user_id"]].credentials.append(credential)
         return credentials
+    def _create_refresh_token(self, rt_dict, user, credentials) -> models.RefreshToken:
+        if (token_type := rt_dict.get("token_type")) is None:
+            if rt_dict["client_id"] is None:
+                token_type = models.TOKEN_TYPE_SYSTEM
+            else:
+                token_type = models.TOKEN_TYPE_NORMAL
+        # old refresh_token don't have last_used_at (pre-0.78)
+        if last_used_at_str := rt_dict.get("last_used_at"):
+            last_used_at = dt_util.parse_datetime(last_used_at_str)
+        else:
+            last_used_at = None
+        token = models.RefreshToken(
+                id=rt_dict["id"],
+                user=user,
+                client_id=rt_dict["client_id"],
+                # use dict.get to keep backward compatibility
+                client_name=rt_dict.get("client_name"),
+                client_icon=rt_dict.get("client_icon"),
+                token_type=token_type,
+                created_at=dt_util.parse_datetime(rt_dict["created_at"]),
+                access_token_expiration=timedelta(
+                    seconds=rt_dict["access_token_expiration"]
+                ),
+                token=rt_dict["token"],
+                jwt_key=rt_dict["jwt_key"],
+                last_used_at=last_used_at,
+                last_used_ip=rt_dict.get("last_used_ip"),
+                expire_at=rt_dict.get("expire_at"),
+                version=rt_dict.get("version"),
+            )
+        if "credential_id" in rt_dict:
+            token.credential = credentials.get(rt_dict["credential_id"])
+        return token
     def _load_refresh_tokens(self, data, users, credentials):
         for rt_dict in data["refresh_tokens"]:
             # Filter out the old keys that don't have jwt_key (pre-0.76)
@@ -429,40 +464,9 @@ class AuthStore:
                 )
                 continue
 
-            if (token_type := rt_dict.get("token_type")) is None:
-                if rt_dict["client_id"] is None:
-                    token_type = models.TOKEN_TYPE_SYSTEM
-                else:
-                    token_type = models.TOKEN_TYPE_NORMAL
-
-            # old refresh_token don't have last_used_at (pre-0.78)
-            if last_used_at_str := rt_dict.get("last_used_at"):
-                last_used_at = dt_util.parse_datetime(last_used_at_str)
-            else:
-                last_used_at = None
-
-            token = models.RefreshToken(
-                id=rt_dict["id"],
-                user=users[rt_dict["user_id"]],
-                client_id=rt_dict["client_id"],
-                # use dict.get to keep backward compatibility
-                client_name=rt_dict.get("client_name"),
-                client_icon=rt_dict.get("client_icon"),
-                token_type=token_type,
-                created_at=created_at,
-                access_token_expiration=timedelta(
-                    seconds=rt_dict["access_token_expiration"]
-                ),
-                token=rt_dict["token"],
-                jwt_key=rt_dict["jwt_key"],
-                last_used_at=last_used_at,
-                last_used_ip=rt_dict.get("last_used_ip"),
-                expire_at=rt_dict.get("expire_at"),
-                version=rt_dict.get("version"),
-            )
-            if "credential_id" in rt_dict:
-                token.credential = credentials.get(rt_dict["credential_id"])
-            users[rt_dict["user_id"]].refresh_tokens[token.id] = token
+            user = users[rt_dict["user_id"]]
+            token = self._create_refresh_token(rt_dict, user, credentials)
+            user.refresh_tokens[token.id] = token
 
     async def async_load(self) -> None:
         """Load the users."""
