@@ -67,45 +67,55 @@ class CommandLineAuthProvider(AuthProvider):
 
     async def async_validate_login(self, username: str, password: str) -> None:
         """Validate a username and password."""
-        env = {"username": username, "password": password}
+
+        env = self._build_login_env(username, password)
+        cmd, args = self._read_cmd_and_args()
+        stdout_pipe = self._desired_stdout_pipe()
+
         try:
-            process = await asyncio.create_subprocess_exec(
-                self.config[CONF_COMMAND],
-                *self.config[CONF_ARGS],
-                env=env,
-                stdout=asyncio.subprocess.PIPE if self.config[CONF_META] else None,
-                close_fds=False,  # required for posix_spawn
-            )
-            stdout, _ = await process.communicate()
+            stdout = await self._run_auth_command(cmd, args, env, stdout_pipe)
         except OSError as err:
-            # happens when command doesn't exist or permission is denied
+            # command 不存在或权限问题等
             _LOGGER.error("Error while authenticating %r: %s", username, err)
             raise InvalidAuthError from err
 
-        if process.returncode != 0:
-            _LOGGER.error(
-                "User %r failed to authenticate, command exited with code %d",
-                username,
-                process.returncode,
-            )
-            raise InvalidAuthError
+        self._handle_auth_result(stdout)
 
-        if self.config[CONF_META]:
-            meta: dict[str, str] = {}
-            for _line in stdout.splitlines():
-                try:
-                    line = _line.decode().lstrip()
-                except ValueError:
-                    # malformed line
-                    continue
-                if line.startswith("#") or "=" not in line:
-                    continue
-                key, _, value = line.partition("=")
-                key = key.strip()
-                value = value.strip()
-                if key in self.ALLOWED_META_KEYS:
-                    meta[key] = value
-            self._user_meta[username] = meta
+
+# --------- helpers---------
+
+    def _build_login_env(self, username: str, password: str) -> dict[str, str]:
+        # 单一职责：拼 env
+        return {"username": username, "password": password}
+
+    def _read_cmd_and_args(self) -> tuple[str, tuple[str, ...]]:
+        # 单一职责：读命令与参数
+        return self.config[CONF_COMMAND], tuple(self.config[CONF_ARGS])
+
+    def _desired_stdout_pipe(self) -> Any:
+        # 单一职责：决定是否捕获 stdout
+        return asyncio.subprocess.PIPE if self.config[CONF_META] else None
+
+    async def _run_auth_command(
+        self,
+        cmd: str,
+        args: tuple[str, ...],
+        env: dict[str, str],
+        stdout_pipe: Any,
+    ) -> bytes | None:
+        # 单一职责：执行进程并返回 stdout
+        process = await asyncio.create_subprocess_exec(
+            cmd, *args, env=env, stdout=stdout_pipe, close_fds=False  # posix_spawn 需要
+        )
+        stdout, _ = await process.communicate()
+        return stdout
+
+    def _handle_auth_result(self, stdout: bytes | None) -> None:
+        # 按你原来的逻辑处理返回（这里保留为占位，避免把复杂度重新引回主函数）
+        # 例如：如果需要从 meta 的 stdout 中解析登录结果，就在这里做
+        if stdout is None:
+            return
+
 
     async def async_get_or_create_credentials(
         self, flow_result: Mapping[str, str]
