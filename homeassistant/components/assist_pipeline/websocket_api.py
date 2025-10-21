@@ -411,25 +411,39 @@ def websocket_list_languages(
             languages.add(dialect.language)
         pipeline_languages = languages
 
-    if stt_language_tags:
-        languages = set()
-        for language_tag in stt_language_tags:
-            dialect = language_util.Dialect.parse(language_tag)
-            languages.add(dialect.language)
-        if pipeline_languages is not None:
-            pipeline_languages = language_util.intersect(pipeline_languages, languages)
-        else:
-            pipeline_languages = languages
+    # if stt_language_tags:
+    #     languages = set()
+    #     for language_tag in stt_language_tags:
+    #         dialect = language_util.Dialect.parse(language_tag)
+    #         languages.add(dialect.language)
+    #     if pipeline_languages is not None:
+    #         pipeline_languages = language_util.intersect(pipeline_languages, languages)
+    #     else:
+    #         pipeline_languages = languages
 
-    if tts_language_tags:
-        languages = set()
-        for language_tag in tts_language_tags:
-            dialect = language_util.Dialect.parse(language_tag)
-            languages.add(dialect.language)
-        if pipeline_languages is not None:
-            pipeline_languages = language_util.intersect(pipeline_languages, languages)
-        else:
-            pipeline_languages = languages
+    # if tts_language_tags:
+    #     languages = set()
+    #     for language_tag in tts_language_tags:
+    #         dialect = language_util.Dialect.parse(language_tag)
+    #         languages.add(dialect.language)
+    #     if pipeline_languages is not None:
+    #         pipeline_languages = language_util.intersect(pipeline_languages, languages)
+    #     else:
+    #         pipeline_languages = languages
+
+    
+    # --- 最小重构：提取一个本地 helper，合并 STT/TTS 的重复逻辑 ---
+    # --- Minimal refactor: introduce a local helper to merge duplicated STT/TTS logic ---
+    def _merge_langs(pipeline_langs: set[str] | None, tags: list[str] | None) -> set[str] | None:
+        if not tags:
+            return pipeline_langs
+        langs = {language_util.Dialect.parse(t).language for t in tags}
+        return langs if pipeline_langs is None else language_util.intersect(pipeline_langs, langs)
+
+    # 复用同一逻辑合并 STT 与 TTS
+    # Reuse the same merging logic for STT and TTS
+    pipeline_languages = _merge_langs(pipeline_languages, stt_language_tags)
+    pipeline_languages = _merge_langs(pipeline_languages, tts_language_tags)
 
     connection.send_result(
         msg["id"],
