@@ -142,3 +142,8 @@ pytest_buckets.txt
 # AI tooling
 .claude
 
+# Ignore SonarQube analysis data
+.sonar/
+.sonar/**/*
+.sonar_lock
+
