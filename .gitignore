@@ -142,3 +142,7 @@ pytest_buckets.txt
 # AI tooling
 .claude
 
+# Sonarqube
+.scannerwork/*
+
+sonar-project.properties
