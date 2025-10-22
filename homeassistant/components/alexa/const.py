@@ -8,6 +8,11 @@ from homeassistant.const import UnitOfTemperature
 DOMAIN = "alexa"
 EVENT_ALEXA_SMART_HOME = "alexa_smart_home"
 
+# Added during refactoring to remove duplicated literals.
+ALEXA_THERMOSTAT_CONTROLLER = "Alexa.ThermostatController"
+ALEXA_SECURITY_PANEL_CONTROLLER = "Alexa.SecurityPanelController"
+ATTR_TYPE = "@type"
+
 # Flash briefing constants
 CONF_UID = "uid"
 CONF_TITLE = "title"
