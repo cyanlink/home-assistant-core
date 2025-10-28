@@ -146,3 +146,4 @@ pytest_buckets.txt
 .scannerwork/*
 
 sonar-project.properties
+/.sonarlint
